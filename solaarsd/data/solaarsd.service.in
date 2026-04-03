@@ -1,0 +1,18 @@
+[Unit]
+Description=Solaar HID++ Logitech Device Manager Daemon
+Documentation=https://pwr-solaar.github.io/Solaar/
+After=dbus.service
+Wants=dbus.service
+
+[Service]
+Type=dbus
+BusName=org.solaarsd
+ExecStart=@sbindir@/solaarsd
+Restart=on-failure
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+RestartSec=5
+
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

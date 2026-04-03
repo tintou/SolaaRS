@@ -3,88 +3,65 @@ name: tests
 on: [push, pull_request]
 
 jobs:
-  ubuntu-tests:
+  rust-tests:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        python-version: [3.13]
-      fail-fast: false
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install system dependencies
+      run: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Run tests (logitech-hidpp)
+      run: cargo test --manifest-path logitech-hidpp/Cargo.toml
+
+    - name: Run tests (solaars-cli)
+      run: cargo test --manifest-path solaars-cli/Cargo.toml
+
+    - name: Run tests (solaarsd)
+      run: cargo test --manifest-path solaarsd/Cargo.toml
+
+  rust-meson-build:
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libudev-dev libusb-1.0-0-dev meson ninja-build
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-meson-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-meson-
 
-    - name: Install Ubuntu dependencies for python 3.8
-      if: matrix.python-version == '3.8'
-      run: |
-        make install_apt
+    - name: Meson setup
+      run: meson setup build
 
-    - name: Install Ubuntu dependencies for python 3.13
-      if: matrix.python-version == '3.13'
-      run: |
-        make install_apt_python3.13
-
-    - name: Install Python dependencies
-      run: |
-        make install_pip PIP_ARGS='.["test"]'
-
-    - name: Run tests on Ubuntu
-      run: |
-        make test
-
-    - name: Upload coverage to Codecov
-      if: github.ref == 'refs/heads/master'
-      uses: codecov/codecov-action@v4.5.0
-      with:
-        directory: ./coverage/reports/
-        env_vars: OS, PYTHON
-        files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        token: ${{ secrets.CODECOV_TOKEN }}
-
-  macos-tests:
-    runs-on: macos-latest
-
-    strategy:
-      matrix:
-        python-version: [3.13]
-      fail-fast: false
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Set up macOS dependencies
-      run: |
-        make install_brew
-    - name: Add Homebrew's library directory to dyld search path
-      run: |
-        echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix)/lib:$DYLD_FALLBACK_LIBRARY_PATH" >> $GITHUB_ENV
-    - name: Install Python dependencies
-      run: |
-        make install_pip PIP_ARGS='.["test"]'
-    - name: Run tests on macOS
-      run: |
-        pytest --cov --cov-report=xml
-    - name: Upload coverage to Codecov
-      if: github.ref == 'refs/heads/master'
-      uses: codecov/codecov-action@v4.5.0
-      with:
-        directory: ./coverage/reports/
-        env_vars: OS, PYTHON
-        files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Build
+      run: ninja -C build

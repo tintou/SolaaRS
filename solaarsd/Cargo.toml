@@ -1,0 +1,20 @@
+[package]
+name = "solaarsd"
+version = "0.1.0"
+edition = "2021"
+description = "Solaar D-Bus daemon for Logitech HID++ device management"
+license = "GPL-2.0-or-later"
+
+[[bin]]
+name = "solaarsd"
+path = "src/main.rs"
+
+[dependencies]
+logitech-hidpp = { path = "../logitech-hidpp" }
+hidapi = { version = "2", default-features = false, features = ["linux-native"] }
+zbus = { version = "5", features = ["tokio"] }
+zvariant = "5"
+tokio = { version = "1", features = ["full"] }
+rusb = "0.9"
+log = "0.4"
+env_logger = "0.11"

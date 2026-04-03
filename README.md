@@ -1,68 +1,130 @@
-# <img src="https://pwr-solaar.github.io/Solaar/img/solaar.svg" width="60px"/> Solaar
+# SolaaRS
 
-Solaar is a Linux manager for many Logitech keyboards, mice, and other devices
-that connect wirelessly to a Unifying, Bolt, Lightspeed or Nano receiver
-as well as many Logitech devices that connect via a USB cable or Bluetooth.
-Solaar is not a device driver and responds only to special messages from devices
-that are otherwise ignored by the Linux input system.
+SolaaRS is a Linux manager for Logitech keyboards, mice, and other devices that
+connect wirelessly via a Unifying, Bolt, Lightspeed, or Nano receiver.
 
-<a href="https://pwr-solaar.github.io/Solaar/index">More Information</a> -
-<a href="https://pwr-solaar.github.io/Solaar/usage">Usage</a> -
-<a href="https://pwr-solaar.github.io/Solaar/capabilities">Capabilities</a> -
-<a href="https://pwr-solaar.github.io/Solaar/rules">Rules</a> -
-<a href="https://pwr-solaar.github.io/Solaar/installation">Manual Installation</a> -
-<a href="https://pwr-solaar.github.io/Solaar/issues">Known Issues</a>
+This repository is a **Rust reimplementation** of the original Solaar project.
+It exposes the same device-management functionality through two complementary
+components:
 
+- **`solaars`** — a command-line interface for direct device management.
+- **`solaarsd`** — a D-Bus system daemon that continuously monitors receivers
+  and paired devices, mirroring the BlueZ object hierarchy.
 
-[![codecov](https://codecov.io/gh/pwr-Solaar/Solaar/graph/badge.svg?token=D7YWFEWID6)](https://codecov.io/gh/pwr-Solaar/Solaar)
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](../LICENSE.txt)
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2+-blue.svg)](LICENSE.txt)
 
-<p align="center">
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-multiple.png" width="54%"/>
-  &#160;
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-receiver.png" width="43%"/>
-</p>
+## Repository layout
 
-<p align="center">
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-main-window-back-divert.png" width="49%"/>
-  &#160;
-<img src="https://pwr-solaar.github.io/Solaar/screenshots/Solaar-rule-editor.png" width="48%"/>
-</p>
+| Crate / directory | Description |
+|---|---|
+| `logitech-hidpp` | Rust library implementing the Logitech HID++ 1.0 and 2.0 protocol |
+| `solaars-cli` | `solaars` binary — CLI device management tool |
+| `solaarsd` | `solaarsd` binary — D-Bus daemon |
+| `rules.d` | udev rules granting non-root access to Logitech HID devices |
 
-Solaar supports:
-- pairing/unpairing of devices with receivers
-- configuring device settings
-- custom button configuration
-- running rules in response to special messages from devices
+## Building
 
-For more information see
-    <a href="https://pwr-solaar.github.io/Solaar/index">the main Solaar documentation page.</a> -
+### Prerequisites
 
+- Rust (edition 2021 or later) with Cargo
+- Meson ≥ 1.0
+- `libhidapi` (linux-native / hidraw backend)
+- `libusb` with hotplug support (for `solaarsd` receiver plug/unplug detection)
+- `libdbus` / `zbus` runtime (for `solaarsd`)
 
-## Installation Packages
+### Steps
 
-Up-to-date prebuilt packages are available for some Linux distros
-(e.g., Fedora) in their standard repositories.
-If a recent version of Solaar is not
-available from the standard repositories for your distribution, you can try
-one of these packages:
+```sh
+meson setup build
+meson compile -C build
+```
 
-- Arch solaar package in the [extra repository][arch]
-- Ubuntu/Kubuntu package in [Solaar stable ppa][ppa stable]
-- NixOS Flake package in [Svenum/Solaar-Flake][nix flake]
+Both binaries are placed under `build/`.
 
-Solaar is available from some other repositories
-but may be several versions behind the current version:
+## Installation
 
-- a [Debian package][debian], courtesy of Stephen Kitt
-- a Ubuntu package is available from [universe repository][ubuntu universe repository]
-- a [Gentoo package][gentoo], courtesy of Carlos Silva and Tim Harder
-- a [Mageia package][mageia], courtesy of David Geiger
+```sh
+meson install -C build
+```
 
-[ppa stable]: https://launchpad.net/~solaar-unifying/+archive/ubuntu/stable
-[arch]: https://www.archlinux.org/packages/extra/any/solaar/
-[gentoo]: https://packages.gentoo.org/packages/app-misc/solaar
-[mageia]: http://mageia.madb.org/package/show/release/cauldron/application/0/name/solaar
-[ubuntu universe repository]: http://packages.ubuntu.com/search?keywords=solaar&searchon=names&suite=all&section=all
-[nix flake]: https://github.com/Svenum/Solaar-Flake
-[debian]: https://packages.debian.org/search?keywords=solaar&searchon=names&suite=all&section=all
+This installs:
+
+- `solaars` and `solaarsd` binaries.
+- The udev rule `42-logitech-unify-permissions.rules` into the appropriate
+  `udev/rules.d` directory, granting seat users raw HID access.
+
+## udev rules
+
+The file `rules.d/42-logitech-unify-permissions.rules` grants the logged-in
+seat user (via `uaccess`) read/write access to Logitech HID devices without
+requiring root privileges.  It is installed automatically by `meson install`.
+
+## `solaars` — CLI
+
+```
+solaars <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `show [device]` | Show information about device(s) or receiver(s). `device` can be a slot number (1–6), serial, codename, name substring, or `all` (default). |
+| `probe [receiver]` | Raw register dump of a receiver (debugging). |
+| `pair [receiver]` | Open the pairing window on a receiver. |
+| `unpair <device>` | Unpair a device from its receiver. |
+| `config <device> [setting [value]]` | Read or write a device setting. |
+| `profiles <device> [file]` | Read or load onboard profiles (YAML). |
+
+Run `solaars <command> --help` for details on each command.
+
+## `solaarsd` — D-Bus daemon
+
+`solaarsd` connects to the system D-Bus under the well-known name
+`org.solaarsd` and exposes a BlueZ-style object hierarchy:
+
+```
+/org/solaarsd                       ← org.freedesktop.DBus.ObjectManager
+/org/solaarsd/receiver{N}           ← org.solaarsd.Receiver1
+/org/solaarsd/receiver{N}/dev{NN}   ← org.solaarsd.Device1
+```
+
+### `org.solaarsd.Receiver1` properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Name` | `s` | Human-readable receiver model name |
+| `Address` | `s` | HID device node (e.g. `/dev/hidraw0`) |
+| `ProductId` | `q` | USB product ID |
+| `MaxDevices` | `y` | Maximum simultaneously paired devices |
+| `Discovering` | `b` | `true` while the pairing window is open |
+
+### `org.solaarsd.Device1` properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `Codename` | `s` | Device model name |
+| `Serial` | `s` | Serial number (hex string) |
+| `Kind` | `s` | Device category: `mouse`, `keyboard`, `trackball`, … |
+| `Wpid` | `q` | Wireless Product ID |
+| `PollingRate` | `y` | Report rate in milliseconds (0 = unknown) |
+| `Receiver` | `o` | Object path of the paired receiver |
+| `Connected` | `b` | `true` when the device is powered on and in range |
+| `BatteryLevel` | `i` | Battery charge 0–100, or `-1` if unavailable |
+| `BatteryStatus` | `s` | `full`, `discharging`, `recharging`, … |
+
+USB hotplug (receiver plug/unplug) is handled via `libusb` hotplug
+notifications; `InterfacesAdded` / `InterfacesRemoved` signals are emitted on
+the `ObjectManager` interface accordingly.
+
+### Running
+
+```sh
+# start the daemon (foreground, logs to stderr via RUST_LOG)
+RUST_LOG=info solaarsd
+```
+
+A systemd unit file (`solaarsd.service`) is provided and installed by
+`meson install`.
+
+## License
+
+GPL-2.0-or-later — see [LICENSE.txt](LICENSE.txt).

@@ -29,3 +29,7 @@ __pycache__/
 
 Pipfile
 Pipfile.lock
+
+logitech-hidpp/target
+solaars-cli/target
+solaarsd/target

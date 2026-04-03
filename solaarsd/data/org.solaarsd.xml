@@ -1,0 +1,161 @@
+<!DOCTYPE node PUBLIC
+  "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<!--
+  D-Bus interface definitions for solaarsd.
+
+  Object hierarchy (mirrors BlueZ / org.bluez):
+
+    /org/solaarsd
+      └── org.freedesktop.DBus.ObjectManager
+
+    /org/solaarsd/receiver{N}
+      └── org.solaarsd.Receiver1
+
+    /org/solaarsd/receiver{N}/dev{M:02}
+      └── org.solaarsd.Device1
+-->
+
+<node>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       org.solaarsd.Receiver1
+       Implemented at /org/solaarsd/receiver{N}.
+       Analogous to org.bluez.Adapter1 for a Bluetooth adapter.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <interface name="org.solaarsd.Receiver1">
+
+    <!--
+      Human-readable receiver model name.
+      Examples: "Unifying Receiver", "Bolt Receiver", "Nano Receiver".
+    -->
+    <property name="Name" type="s" access="read"/>
+
+    <!--
+      HID device node through which the receiver is accessed.
+      Example: "/dev/hidraw0".
+      Analogous to Adapter1::Address.
+    -->
+    <property name="Address" type="s" access="read"/>
+
+    <!--
+      USB product ID (16-bit unsigned integer).
+      Example: 0xC52B for the Unifying Receiver.
+    -->
+    <property name="ProductId" type="q" access="read"/>
+
+    <!--
+      Maximum number of devices that can be paired to this receiver
+      simultaneously.  Typically 6 for Unifying, 1 for Nano receivers.
+    -->
+    <property name="MaxDevices" type="y" access="read"/>
+
+    <!--
+      True while the receiver's pairing window is open.
+      Becomes true after StartDiscovery() is called and false after
+      StopDiscovery() or the pairing timeout expires.
+      Analogous to Adapter1::Discovering.
+    -->
+    <property name="Discovering" type="b" access="read"/>
+
+    <!--
+      Open the receiver's pairing window (default 30-second timeout).
+      Sets Discovering to true.  Returns an error if the HID++ command fails
+      or a pairing session is already active.
+      Analogous to Adapter1::StartDiscovery().
+    -->
+    <method name="StartDiscovery"/>
+
+    <!--
+      Close the receiver's pairing window early.
+      Sets Discovering to false.
+      Analogous to Adapter1::StopDiscovery().
+    -->
+    <method name="StopDiscovery"/>
+
+  </interface>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       org.solaarsd.Device1
+       Implemented at /org/solaarsd/receiver{N}/dev{M:02}.
+       Analogous to org.bluez.Device1 for a Bluetooth device.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <interface name="org.solaarsd.Device1">
+
+    <!--
+      Short model name reported by the device firmware.
+      Examples: "MX Master 3", "K380", "M720".
+      Analogous to Device1::Name.
+    -->
+    <property name="Codename" type="s" access="read"/>
+
+    <!--
+      Device serial number (hexadecimal string).
+      Example: "1A2B3C4D".
+    -->
+    <property name="Serial" type="s" access="read"/>
+
+    <!--
+      Device category as a lower-case string.
+      One of: "mouse", "keyboard", "numpad", "presenter", "trackball",
+              "touchpad", "headset", "receiver", "unknown".
+    -->
+    <property name="Kind" type="s" access="read"/>
+
+    <!--
+      Wireless Product ID (WPID) — the device's own 16-bit product identifier
+      as seen over the HID++ radio link.
+    -->
+    <property name="Wpid" type="q" access="read"/>
+
+    <!--
+      Polling / report rate in milliseconds (1 = 1000 Hz, 4 = 250 Hz, …).
+      0 means the rate is not known.
+    -->
+    <property name="PollingRate" type="y" access="read"/>
+
+    <!--
+      Object path of the receiver this device is paired to.
+      Example: "/org/solaarsd/receiver0".
+      Analogous to Device1::Adapter.
+    -->
+    <property name="Receiver" type="o" access="read"/>
+
+    <!--
+      True when the device is powered on and reachable; false when it is
+      turned off, out of range, or the receiver cannot communicate with it.
+      Changes in this property are emitted via PropertiesChanged.
+      Analogous to Device1::Connected.
+    -->
+    <property name="Connected" type="b" access="read"/>
+
+    <!--
+      Estimated battery charge in percent (0–100).
+      -1 when the battery level is not available (device offline, or device
+      does not support battery reporting).
+      Changes in this property are emitted via PropertiesChanged.
+    -->
+    <property name="BatteryLevel" type="i" access="read"/>
+
+    <!--
+      Human-readable battery charging/discharging status.
+      One of: "full", "almost_full", "recharging", "slow_recharge",
+              "discharging", "invalid", "thermal_error", "unknown".
+      Changes in this property are emitted via PropertiesChanged.
+    -->
+    <property name="BatteryStatus" type="s" access="read"/>
+
+    <!--
+      Unpair this device from its receiver.
+      Instructs the receiver to remove the device from its pairing table.
+      The D-Bus object for this device is removed once the daemon detects
+      the resulting hotplug departure event.
+      Returns an error if the HID++ unpair command fails.
+      Analogous to Device1::Disconnect().
+    -->
+    <method name="Unpair"/>
+
+  </interface>
+
+</node>
